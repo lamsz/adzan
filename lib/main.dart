@@ -42,8 +42,8 @@ class _AdzanPageState extends State<AdzanPage> {
   final latitudeController = TextEditingController();
   final locationController = TextEditingController();
   final longitudeController = TextEditingController();
-  var latitude = '-6.7';
-  var longitude = '107.5';
+  var latitude = '-7.840243';
+  var longitude = '110.408333';
   var location = 'Banguntapan, Bantul, DIY Indonesia';
   var switchValue = <bool>[];
   var switchAll = false;
@@ -118,12 +118,15 @@ class _AdzanPageState extends State<AdzanPage> {
       }
       switchValue.add(false);
       var sholatTime = prayerTimes.timeForPrayer(element);
+      if (sholatTime != null && index == 0) {
+        sholatTime = sholatTime.subtract(Duration(minutes: 10));
+      }
       childWidgets.add(Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
         child: Container(
           height: 35,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
