@@ -44,7 +44,7 @@ class _AdzanPageState extends State<AdzanPage> {
   final longitudeController = TextEditingController();
   var latitude = '-6.7';
   var longitude = '107.5';
-  var location = 'Banguntapan, Bantul';
+  var location = 'Banguntapan, Bantul, DIY Indonesia';
   var switchValue = <bool>[];
   var switchAll = false;
   // name in local
@@ -89,7 +89,7 @@ class _AdzanPageState extends State<AdzanPage> {
 
     final DateFormat formatter = DateFormat('EEEE d MMMM y', 'id');
 
-    var todayDateString = '${formatter.format(curTime)}';
+    var todayDateString = '$location, ${formatter.format(curTime)}';
     Timer(Duration(seconds: 1), () {
       curTime = DateTime.now();
       var nextPrayerTime = prayerTimes.timeForPrayer(prayerTimes.nextPrayer());
