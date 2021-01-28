@@ -189,22 +189,18 @@ class _AdzanPageState extends State<AdzanPage> {
                               Column(
                                 children: [
                                   Container(
-                                    width:
-                                        MediaQuery.of(context).size.width / 2,
                                     child: Text(
                                       address,
                                       style: textTheme.subtitle1,
-                                      maxLines: 2,
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   Container(
-                                    width:
-                                        MediaQuery.of(context).size.width / 2,
                                     child: Text(
                                       timeText,
                                       style: textTheme.subtitle1,
-                                      maxLines: 2,
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
