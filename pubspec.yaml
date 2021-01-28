@@ -26,6 +26,8 @@ dependencies:
 
   adhan: ^1.1.14
   intl: ^0.16.1
+  location: ^3.2.4
+  mapbox_geocoding: ^0.1.3
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.0

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'dart:async';
@@ -5,6 +6,10 @@ import 'dart:async';
 import 'package:adhan/adhan.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+// import 'package:geocoder/geocoder.dart' as geocoder;
+import 'package:location/location.dart';
+import 'package:mapbox_geocoding/mapbox_geocoding.dart';
+import 'package:mapbox_geocoding/model/reverse_geocoding.dart';
 
 void main() {
   runApp(Adzan());
@@ -35,18 +40,21 @@ class AdzanPage extends StatefulWidget {
   _AdzanPageState createState() => _AdzanPageState();
 }
 
+const apikey = String.fromEnvironment('apikey');
+
 class _AdzanPageState extends State<AdzanPage> {
   String locationError;
   PrayerTimes prayerTimes;
-  var locationText = '';
+  var timeText = '';
   final latitudeController = TextEditingController();
   final locationController = TextEditingController();
   final longitudeController = TextEditingController();
-  var latitude = '-7.840243';
-  var longitude = '110.408333';
-  var location = 'Banguntapan, Bantul, DIY Indonesia';
+  var latitude = -7.840243;
+  var longitude = 110.408333;
   var switchValue = <bool>[];
   var switchAll = false;
+  var address = '';
+  MapboxGeocoding geocoding = MapboxGeocoding(apikey);
   // name in local
   var prayTimes = [
     PrayerTimeWrapper(name: 'Imsak', reminderAble: false),
@@ -61,16 +69,17 @@ class _AdzanPageState extends State<AdzanPage> {
   var curTime = DateTime.now();
 
   var textAdzanRemaining = '';
+  Location location = new Location();
+
+  bool _serviceEnabled;
+  PermissionStatus _permissionGranted;
+  LocationData _locationData;
 
   @override
   void initState() {
     super.initState();
-    var params = CalculationMethod.singapore.getParameters();
-    prayerTimes = PrayerTimes(
-      Coordinates(double.parse(latitude), double.parse(longitude)),
-      DateComponents.from(DateTime.now()),
-      params,
-    );
+    setPrayer(latitude, longitude);
+    _askCurrentLocation();
     // var nextPrayerTime = prayerTimes.timeForPrayer(prayerTimes.nextPrayer());
     initializeDateFormatting('id', null);
   }
@@ -89,27 +98,30 @@ class _AdzanPageState extends State<AdzanPage> {
 
     final DateFormat formatter = DateFormat('EEEE d MMMM y', 'id');
 
-    var todayDateString = '$location, ${formatter.format(curTime)}';
+    // var todayDateString = '$locationText,  }';
     Timer(Duration(seconds: 1), () {
-      curTime = DateTime.now();
-      var nextPrayerTime = prayerTimes.timeForPrayer(prayerTimes.nextPrayer());
-      if (nextPrayerTime != null) {
-        var milisDiff = nextPrayerTime.millisecondsSinceEpoch -
-            curTime.millisecondsSinceEpoch;
-        var hourDiff = milisDiff ~/ 3600000;
-        var minuteDiff = (milisDiff - hourDiff * 3600000) ~/ 60000;
-        var secondDiff =
-            (milisDiff - (hourDiff * 3600000) - (minuteDiff * 60000)) ~/ 1000;
-        setState(() {
-          textAdzanRemaining =
-              'Next Prayer in $hourDiff hours $minuteDiff minutes  $secondDiff  seconds';
-          locationText =
-              '$location, ${curTime.hour.toString().padLeft(2, "0")}:${curTime.minute.toString().padLeft(2, "0")}:${curTime.second.toString().padLeft(2, "0")}  WIB';
-        });
-      } else {
-        setState(() {
-          textAdzanRemaining = 'Menunggu tengah malam';
-        });
+      if (prayerTimes != null) {
+        curTime = DateTime.now();
+        var nextPrayerTime =
+            prayerTimes.timeForPrayer(prayerTimes.nextPrayer());
+        if (nextPrayerTime != null) {
+          var milisDiff = nextPrayerTime.millisecondsSinceEpoch -
+              curTime.millisecondsSinceEpoch;
+          var hourDiff = milisDiff ~/ 3600000;
+          var minuteDiff = (milisDiff - hourDiff * 3600000) ~/ 60000;
+          var secondDiff =
+              (milisDiff - (hourDiff * 3600000) - (minuteDiff * 60000)) ~/ 1000;
+          setState(() {
+            textAdzanRemaining =
+                'tinggal $hourDiff jam $minuteDiff menit $secondDiff detik lagi';
+            timeText =
+                '${formatter.format(curTime)} ${curTime.hour.toString().padLeft(2, "0")}:${curTime.minute.toString().padLeft(2, "0")}:${curTime.second.toString().padLeft(2, "0")}  GMT+7';
+          });
+        } else {
+          setState(() {
+            textAdzanRemaining = 'Menunggu tengah malam';
+          });
+        }
       }
     });
     Prayer.values.asMap().forEach((index, element) {
@@ -167,14 +179,37 @@ class _AdzanPageState extends State<AdzanPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: Container(
                         width: double.maxFinite,
-                        height: 40,
+                        height: 80,
                         color: Colors.white.withOpacity(0.7),
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(todayDateString, style: textTheme.subtitle1),
+                              Column(
+                                children: [
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width / 2,
+                                    child: Text(
+                                      address,
+                                      style: textTheme.subtitle1,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width / 2,
+                                    child: Text(
+                                      timeText,
+                                      style: textTheme.subtitle1,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         )),
@@ -188,8 +223,17 @@ class _AdzanPageState extends State<AdzanPage> {
                     child: Column(
                       children: [
                         Text(
-                          prayTimes[prayerTimes.nextPrayer().index].name,
-                          style: textTheme.headline1,
+                          'Sholat berikutnya ',
+                          style: textTheme.headline6,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              prayTimes[prayerTimes.nextPrayer().index].name,
+                              style: textTheme.headline1,
+                            ),
+                          ],
                         ),
                         Text(textAdzanRemaining, style: textTheme.subtitle1)
                       ],
@@ -224,6 +268,70 @@ class _AdzanPageState extends State<AdzanPage> {
         ],
       ),
     );
+  }
+
+  setPrayer(latitude, longitude) async {
+    try {
+      setState(() {
+        var params = CalculationMethod.singapore.getParameters();
+        prayerTimes = PrayerTimes(
+          Coordinates(latitude, longitude),
+          DateComponents.from(DateTime.now()),
+          params,
+        );
+      });
+
+      // final coordinates = new geocoder.Coordinates(latitude, longitude);
+      // var addresses = await geocoder.Geocoder.local
+      //     .findAddressesFromCoordinates(coordinates);
+      // setLocation(latitude, longitude, addresses);
+    } catch (ex) {
+      print("Exception thrown : " + ex.toString());
+    }
+  }
+
+  void setLocation(latitude, longitude, addresses) {
+    setState(() {
+      var first = addresses.first;
+      timeText =
+          '${first.featureName} : ${first.addressLine}, lat ${latitude.toString()} long ${longitude.toString()}';
+    });
+  }
+
+  // ignore: unused_element
+  Future<void> _askCurrentLocation() async {
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return;
+      }
+    }
+
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return;
+      }
+    }
+
+    _locationData = await location.getLocation();
+    setCity(_locationData.latitude, _locationData.longitude);
+  }
+
+  void setCity(double latitude, double longitude) async {
+    ///Reverse geocoding. Get place name from latitude and longitude.
+    try {
+      ReverseGeocoding reverseModel = await geocoding
+          .reverseModel(latitude, longitude, limit: 10, types: 'locality');
+      setState(() {
+        address = reverseModel.features[0].placeName;
+        // print(reverseModel.features.length);
+      });
+    } catch (Excepetion) {
+      print('Reverse Geocoding Error');
+    }
   }
 }
 
