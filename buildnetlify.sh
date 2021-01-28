@@ -10,4 +10,4 @@ git checkout $FLUTTER_REVISION
 cd ..
 
 flutter/bin/flutter config --enable-web
-flutter/bin/flutter build web
+flutter/bin/flutter build web --dart-define=apikey=$API_KEY
